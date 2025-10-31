@@ -49,8 +49,8 @@ app.get('/', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running: http://localhost:${PORT}`);
-  console.log(`📊 Visit http://localhost:${PORT} to get filtered data`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`📊 Access at: http://0.0.0.0:${PORT} or http://YOUR_PUBLIC_IP:${PORT}`);
 });
 
