@@ -1,0 +1,25 @@
+{
+  "name": "waaree-earnings-api",
+  "version": "1.0.0",
+  "description": "Waaree Solar Earnings API - Filtered endpoint for power and yield data",
+  "main": "server.js",
+  "scripts": {
+    "login": "node scripts/saveStorage.js",
+    "start": "node server.js",
+    "postinstall": "npx --yes playwright install chromium"
+  },
+  "keywords": ["waaree", "solar", "earnings", "api"],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  },
+  "dependencies": {
+    "axios": "^1.13.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
+}

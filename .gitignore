@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Session/Storage files (don't commit credentials)
+waaree-state.json
+*.state.json
+
+# User data directories
+.waaree-user-data*/
+waaree-user-data*/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build files
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# PHP app (not included)
+php-app/
+
+# Test files
+test-*.json
+api-headers.json
+signature-logic.json
+
+# Server logs
+/tmp/waaree-server.log
+
