@@ -1,9 +1,11 @@
 const { getEarnings } = require('./api');
+const { autoLogin } = require('./autoLogin');
 const fs = require('fs');
 
 let cachedData = null;
 let cacheTime = null;
 let isUpdating = false;
+let consecutiveFailures = 0;
 
 // Load cache on startup
 function loadCache() {
@@ -69,6 +71,7 @@ async function fetchData() {
       cachedData = response;
       cacheTime = new Date().toISOString();
       saveCache();
+      consecutiveFailures = 0; // Reset failure counter on success
       
       console.log('✅ Data cached:', response.powerOutput);
       return response;
@@ -77,6 +80,39 @@ async function fetchData() {
     throw new Error('Failed to fetch data');
   } catch (error) {
     console.error('❌ Error fetching data:', error.message);
+    consecutiveFailures++;
+    
+    // Auto-login if we have too many failures (likely session expired)
+    if (consecutiveFailures >= 2) {
+      console.log('Session likely expired, attempting auto-login...');
+      const loginSuccess = await autoLogin();
+      if (loginSuccess) {
+        consecutiveFailures = 0;
+        console.log('Retrying fetch after auto-login...');
+        // Retry once after login
+        try {
+          const data = await getEarnings();
+          if (data.errno === 0 && data.result) {
+            const powerKW = data.result.power || 0;
+            const generationKWh = data.result.today?.generation || 0;
+            
+            const response = {
+              powerOutput: `${Math.round(powerKW * 1000)} Watt`,
+              yieldToday: `${parseFloat(generationKWh.toFixed(1))}kWh`,
+              spoken: `Power output is ${Math.round(powerKW * 1000)} Watt. Yield today is ${parseFloat(generationKWh.toFixed(1))}kWh.`
+            };
+            
+            cachedData = response;
+            cacheTime = new Date().toISOString();
+            saveCache();
+            console.log('✅ Data cached after auto-login:', response.powerOutput);
+            return response;
+          }
+        } catch (retryError) {
+          console.error('Retry failed:', retryError.message);
+        }
+      }
+    }
     
     // Return cached data if fetch fails
     if (cachedData) {
