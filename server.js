@@ -38,10 +38,12 @@ async function fetchWaareeData() {
   }
 }
 
-// Function to extract numeric value from string (e.g., "832 Watt" -> 832, "2kWh" -> 2)
+// Function to extract numeric value from string (e.g., "832 Watt" -> 832, "2kWh" -> 2, "1,932W" -> 1932)
 function extractNumericValue(str) {
   if (!str) return 0;
-  const match = str.match(/[\d.]+/);
+  // Remove commas and extract all numbers and decimals
+  const cleaned = str.replace(/,/g, '');
+  const match = cleaned.match(/[\d.]+/);
   return match ? parseFloat(match[0]) : 0;
 }
 
