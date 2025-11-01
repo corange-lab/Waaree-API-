@@ -1,16 +1,16 @@
 #!/bin/bash
 
 # Deployment script for Waaree API server
-# Usage: ./deploy.sh [server_user@server_ip]
+# Usage: ./deploy.sh
 
-SERVER=${1:-"root@144.24.114.26"}
-APP_DIR="~/waaree-api"
+SSH_KEY='/Volumes/Data/Oracle Instance /IMEI CHECKER/ssh-key-2025-10-20.key'
+SERVER='ubuntu@144.24.114.26'
 
 echo "🚀 Deploying to server: $SERVER"
 echo "📦 Pulling latest code from GitHub..."
 
 # SSH into server and update
-ssh $SERVER << 'ENDSSH'
+ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no $SERVER << 'ENDSSH'
 cd ~/waaree-api
 echo "📥 Pulling latest code..."
 git pull origin main
