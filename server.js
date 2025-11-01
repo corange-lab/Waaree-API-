@@ -86,7 +86,7 @@ app.get('/combined', async (req, res) => {
         powerOutput: `${Math.round(totalPower)} Watt`,
         yieldToday: `${parseFloat(totalYield.toFixed(1))}kWh`
       },
-      spoken: `Solax Solar power output is ${solaxPower}. Yield today is ${solaxYield}. Waaree Solar power output is ${waareePower}. Yield today is ${waareeYield}. Total power output is ${Math.round(totalPower)} Watt. Total yield today is ${parseFloat(totalYield.toFixed(1))}kWh.`
+      spoken: `Solax ${solaxPower}, ${solaxYield}. Waaree ${waareePower}, ${waareeYield}.`
     };
 
     return res.json(response);
