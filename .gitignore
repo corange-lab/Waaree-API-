@@ -56,3 +56,6 @@ signature-logic.json
 # Server logs
 /tmp/waaree-server.log
 
+# Cache files
+cache.json
+
