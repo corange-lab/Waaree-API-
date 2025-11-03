@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const { startCacheService, getCachedData } = require('./cache');
+const { startCacheService, getCachedData, fetchData } = require('./cache');
 
 const app = express();
 const PORT = process.env.PORT || 8888;
@@ -25,16 +25,25 @@ async function fetchSolaxData() {
   }
 }
 
-// Function to fetch Waaree data
+// Function to fetch Waaree data - always gets fresh data for combined endpoint
 async function fetchWaareeData() {
   try {
-    const response = await axios.get('http://144.24.114.26:8888', {
+    // Force fresh fetch instead of using cached endpoint
+    await fetchData();
+    const freshData = getCachedData();
+    if (freshData) {
+      return freshData;
+    }
+    // Fallback to cached endpoint if fresh fetch fails
+    const response = await axios.get('http://localhost:8888', {
       timeout: 10000
     });
     return response.data;
   } catch (error) {
     console.error('Error fetching Waaree data:', error.message);
-    return null;
+    // Last resort: try cached data
+    const cached = getCachedData();
+    return cached || null;
   }
 }
 
@@ -99,9 +108,15 @@ app.get('/combined', async (req, res) => {
   }
 });
 
-// Filtered endpoint - returns cached data instantly
-app.get('/', (req, res) => {
+// Filtered endpoint - returns cached data instantly, with optional refresh
+app.get('/', async (req, res) => {
   try {
+    // Force refresh if ?refresh=true is passed
+    if (req.query.refresh === 'true') {
+      console.log('Force refresh requested...');
+      await fetchData().catch(console.error);
+    }
+    
     // Return cached data (fast response!)
     const cache = getCachedData();
     
@@ -109,7 +124,18 @@ app.get('/', (req, res) => {
       return res.json(cache);
     }
     
-    // Fallback if no cache yet
+    // Fallback if no cache yet - try to fetch once
+    console.log('No cache available, fetching fresh data...');
+    try {
+      await fetchData();
+      const freshCache = getCachedData();
+      if (freshCache) {
+        return res.json(freshCache);
+      }
+    } catch (e) {
+      console.error('Failed to fetch fresh data:', e.message);
+    }
+    
     return res.status(503).json({
       errno: 1,
       error: 'Data not available',
