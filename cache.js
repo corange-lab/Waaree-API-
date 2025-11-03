@@ -135,16 +135,16 @@ function startCacheService() {
     fetchData().catch(console.error);
   }
   
-  // Schedule updates every 15 minutes during operating hours
+  // Schedule updates every 30 minutes
   setInterval(async () => {
     if (isWithinOperatingHours()) {
       await fetchData().catch(console.error);
     } else {
       console.log('Outside operating hours (7 AM - 7 PM IST), skipping fetch');
     }
-  }, 15 * 60 * 1000); // 15 minutes
+  }, 30 * 60 * 1000); // 30 minutes
   
-  console.log('⚡ Cache service started. Updates every 15 minutes (7 AM - 7 PM IST)');
+  console.log('⚡ Cache service started. Updates every 30 minutes (7 AM - 7 PM IST)');
 }
 
 // Get cached data
