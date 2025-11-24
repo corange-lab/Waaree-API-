@@ -81,7 +81,9 @@ app.get('/combined', async (req, res) => {
     const totalPower = solaxPowerValue + waareePowerValue;
     const totalYield = solaxYieldValue + waareeYieldValue;
 
-    // Build response
+    // Build response - keep old format with spoken always present, add notify field
+    const spokenText = `Solax ${solaxPower}, ${solaxYield}. Waaree ${waareePower}, ${waareeYield}. Total ${parseFloat(totalYield.toFixed(1))}kWh.`;
+
     const response = {
       solax: {
         powerOutput: solaxPower,
@@ -95,7 +97,8 @@ app.get('/combined', async (req, res) => {
         powerOutput: `${Math.round(totalPower)} Watt`,
         yieldToday: `${parseFloat(totalYield.toFixed(1))}kWh`
       },
-      spoken: `Solax ${solaxPower}, ${solaxYield}. Waaree ${waareePower}, ${waareeYield}. Total ${parseFloat(totalYield.toFixed(1))}kWh.`
+      spoken: spokenText,
+      notify: spokenText
     };
 
     return res.json(response);
