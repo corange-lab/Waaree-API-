@@ -81,9 +81,11 @@ app.get('/combined', async (req, res) => {
     const totalPower = solaxPowerValue + waareePowerValue;
     const totalYield = solaxYieldValue + waareeYieldValue;
 
-    // Build response - keep old format with spoken always present, add notify field
+    // Check if either system has 0 power output
+    const hasZeroPower = solaxPowerValue === 0 || waareePowerValue === 0;
     const spokenText = `Solax ${solaxPower}, ${solaxYield}. Waaree ${waareePower}, ${waareeYield}. Total ${parseFloat(totalYield.toFixed(1))}kWh.`;
 
+    // Build response
     const response = {
       solax: {
         powerOutput: solaxPower,
@@ -97,7 +99,9 @@ app.get('/combined', async (req, res) => {
         powerOutput: `${Math.round(totalPower)} Watt`,
         yieldToday: `${parseFloat(totalYield.toFixed(1))}kWh`
       },
-      spoken: spokenText,
+      // If either system has 0 power: spoken has text (Siri will speak), notify has text
+      // If both have power: spoken is empty (no speech), notify has text (notification only)
+      spoken: hasZeroPower ? spokenText : "",
       notify: spokenText
     };
 
