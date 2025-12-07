@@ -58,9 +58,31 @@ async function fetchData() {
     console.log('Fetching fresh data...');
     const data = await getEarnings();
     
+    console.log('📥 Raw API response errno:', data?.errno);
+    console.log('📥 Raw API response result:', data?.result ? 'Present' : 'Missing');
+    
+    // Check for authentication/session errors (common error codes: 41809, 401, etc.)
+    if (data.errno && data.errno !== 0) {
+      console.error('❌ API returned error code:', data.errno);
+      if (data.errno === 41809 || data.errno === 401 || data.errno === 403) {
+        console.log('🔐 Detected authentication error, triggering auto-login immediately...');
+        consecutiveFailures = 2; // Force auto-login immediately
+        throw new Error('Session expired - authentication required');
+      }
+      // For other errors, throw to trigger normal error handling
+      throw new Error(`API error: ${data.errno}`);
+    }
+    
     if (data.errno === 0 && data.result) {
       const powerKW = data.result.power || 0;
       const generationKWh = data.result.today?.generation || 0;
+      
+      console.log('🔍 Extracted values - Power (KW):', powerKW, 'Generation (kWh):', generationKWh);
+      
+      // Check if we have valid data
+      if (powerKW === 0 && generationKWh === 0) {
+        console.warn('⚠️ API returned zero values - this might be correct if system is off');
+      }
       
       const response = {
         powerOutput: `${Math.round(powerKW * 1000)} Watt`,
@@ -73,11 +95,12 @@ async function fetchData() {
       saveCache();
       consecutiveFailures = 0; // Reset failure counter on success
       
-      console.log('✅ Data cached:', response.powerOutput);
+      console.log('✅ Data cached:', response.powerOutput, 'Yield:', response.yieldToday);
       return response;
     }
     
-    throw new Error('Failed to fetch data');
+    console.error('❌ Invalid API response structure:', JSON.stringify(data));
+    throw new Error('Failed to fetch data - invalid response structure');
   } catch (error) {
     console.error('❌ Error fetching data:', error.message);
     consecutiveFailures++;

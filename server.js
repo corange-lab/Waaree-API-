@@ -28,22 +28,54 @@ async function fetchSolaxData() {
 // Function to fetch Waaree data - always gets fresh data for combined endpoint
 async function fetchWaareeData() {
   try {
-    // Force fresh fetch instead of using cached endpoint
-    await fetchData();
-    const freshData = getCachedData();
-    if (freshData) {
-      return freshData;
+    // First check if we have cached data
+    let cached = getCachedData();
+    console.log('💾 Initial cached data check:', cached ? `Found - Power: ${cached.powerOutput}` : 'Not found');
+    
+    // Try to get fresh data (this might return undefined if already updating)
+    console.log('🔄 Attempting fresh fetch...');
+    try {
+      const fetchResult = await fetchData();
+      if (fetchResult && fetchResult.powerOutput && fetchResult.yieldToday) {
+        console.log('✅ Got fresh data from fetchData()');
+        return fetchResult;
+      }
+    } catch (fetchError) {
+      console.log('⚠️ fetchData() error (may be updating):', fetchError.message);
     }
-    // Fallback to cached endpoint if fresh fetch fails
-    const response = await axios.get('http://localhost:8888', {
-      timeout: 10000
-    });
-    return response.data;
+    
+    // Check cache again after fetch attempt
+    cached = getCachedData();
+    if (cached && cached.powerOutput && cached.yieldToday) {
+      console.log('✅ Using cached Waaree data');
+      return cached;
+    }
+    
+    // Fallback to localhost endpoint if cache is empty
+    console.log('⚠️ Cache empty, trying localhost endpoint...');
+    try {
+      const response = await axios.get('http://localhost:8888', {
+        timeout: 10000
+      });
+      if (response.data && response.data.powerOutput && response.data.yieldToday) {
+        console.log('✅ Got data from localhost endpoint');
+        return response.data;
+      }
+    } catch (localhostError) {
+      console.error('❌ Localhost endpoint failed:', localhostError.message);
+    }
+    
+    console.error('❌ All Waaree data fetch methods failed - returning null');
+    return null;
   } catch (error) {
-    console.error('Error fetching Waaree data:', error.message);
+    console.error('❌ Error fetching Waaree data:', error.message);
     // Last resort: try cached data
     const cached = getCachedData();
-    return cached || null;
+    if (cached) {
+      console.log('✅ Using cached data as last resort');
+      return cached;
+    }
+    return null;
   }
 }
 
@@ -65,6 +97,10 @@ app.get('/combined', async (req, res) => {
       fetchWaareeData()
     ]);
 
+    // Debug logging
+    console.log('📊 Solax data received:', solaxData ? JSON.stringify(solaxData) : 'null');
+    console.log('📊 Waaree data received:', waareeData ? JSON.stringify(waareeData) : 'null');
+
     // Extract values from Solax
     const solaxPower = solaxData?.powerOutput || '0 Watt';
     const solaxYield = solaxData?.yieldToday || '0kWh';
@@ -76,6 +112,8 @@ app.get('/combined', async (req, res) => {
     const waareeYield = waareeData?.yieldToday || '0kWh';
     const waareePowerValue = extractNumericValue(waareePower);
     const waareeYieldValue = extractNumericValue(waareeYield);
+    
+    console.log('🔍 Extracted Waaree values - Power:', waareePower, 'Value:', waareePowerValue, 'Yield:', waareeYield, 'Value:', waareeYieldValue);
 
     // Calculate totals
     const totalPower = solaxPowerValue + waareePowerValue;
