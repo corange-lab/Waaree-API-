@@ -18,6 +18,18 @@ git pull origin main
 echo "📦 Installing dependencies (if any)..."
 npm install
 
+echo "🌐 Installing Playwright browsers (if needed)..."
+npx playwright install chromium || echo "⚠️ Playwright install skipped (may already be installed)"
+
+echo "🔍 Checking session file..."
+if [ ! -f "waaree-state.json" ] || [ ! -s "waaree-state.json" ]; then
+    echo "⚠️  WARNING: Session file missing or empty!"
+    echo "   Run 'npm run login' on server to create session"
+    echo "   Or copy waaree-state.json from local machine"
+else
+    echo "✅ Session file exists"
+fi
+
 echo "🔄 Restarting PM2 service..."
 pm2 restart waaree-api
 
