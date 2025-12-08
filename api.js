@@ -38,8 +38,11 @@ async function getEarnings(deviceId = '3996d92f-b4e5-490a-b37e-3a617d48077c', st
     console.warn('⚠️ Storage state file not found. Login may be required.');
   }
 
+  // Try to use regular chromium instead of headless shell for better stability
   const browser = await chromium.launch({ 
     headless: true,
+    channel: undefined, // Use installed chromium, not system chrome
+    executablePath: '/home/ubuntu/.cache/ms-playwright/chromium-1194/chrome-linux/chrome', // Force use regular chromium
     args: [
       '--no-sandbox', 
       '--disable-setuid-sandbox', 
@@ -53,7 +56,8 @@ async function getEarnings(deviceId = '3996d92f-b4e5-490a-b37e-3a617d48077c', st
       '--disable-backgrounding-occluded-windows',
       '--disable-ipc-flooding-protection',
       '--memory-pressure-off',
-      '--max_old_space_size=128'
+      '--single-process', // Use single process to reduce memory
+      '--disable-web-security'
     ]
   });
   
