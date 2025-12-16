@@ -97,20 +97,32 @@ async function main() {
     console.log('✅ Device page loaded');
     
     // Verify we can access the API - this ensures session is valid
+    // Make multiple API calls to ensure session is fully established
     try {
+      console.log('🔍 Testing API to verify session...');
+      await page.waitForTimeout(3000); // Wait for any pending requests
+      
       const apiTest = await page.evaluate(async (id) => {
         try {
           const url = new URL('/c/v0/device/earnings', window.location.origin);
           url.searchParams.set('deviceID', id);
           const resp = await fetch(url, {
             credentials: 'include',
-            headers: { 'Accept': 'application/json' }
+            headers: { 
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            }
           });
           if (!resp.ok) {
-            return { success: false, status: resp.status };
+            return { success: false, status: resp.status, statusText: resp.statusText };
           }
           const data = await resp.json();
-          return { success: data.errno === 0, errno: data.errno };
+          return { 
+            success: data.errno === 0, 
+            errno: data.errno,
+            error: data.error,
+            hasResult: !!data.result
+          };
         } catch (e) {
           return { success: false, error: e.message };
         }
@@ -119,10 +131,30 @@ async function main() {
       if (apiTest.success) {
         console.log('✅ API test successful - session is valid');
       } else {
-        console.log('⚠️ API test result:', apiTest.errno || apiTest.error || 'Unknown error');
+        console.log('⚠️ API test failed:', {
+          errno: apiTest.errno,
+          error: apiTest.error,
+          status: apiTest.status,
+          hasResult: apiTest.hasResult
+        });
+        console.log('⚠️ Session may not be fully established. Try waiting longer or check credentials.');
+      }
+      
+      // Try one more time after a delay
+      await page.waitForTimeout(2000);
+      const retryTest = await page.evaluate(async (id) => {
+        const url = new URL('/c/v0/device/earnings', window.location.origin);
+        url.searchParams.set('deviceID', id);
+        const resp = await fetch(url, { credentials: 'include' });
+        const data = await resp.json();
+        return { success: data.errno === 0, errno: data.errno };
+      }, deviceId);
+      
+      if (retryTest.success) {
+        console.log('✅ Retry API test successful');
       }
     } catch (apiError) {
-      console.log('⚠️ API test error (session may still be valid):', apiError.message);
+      console.log('⚠️ API test error:', apiError.message);
     }
   } catch (e) {
     console.error('❌ Error navigating to device page:', e.message);
