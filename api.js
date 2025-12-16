@@ -26,7 +26,6 @@ function normalize(raw) {
  */
 async function getEarnings(deviceId = '3996d92f-b4e5-490a-b37e-3a617d48077c', storagePath = 'waaree-state.json') {
   // Verify storage state exists and has data
-  const fs = require('fs');
   if (fs.existsSync(storagePath)) {
     const state = JSON.parse(fs.readFileSync(storagePath, 'utf-8'));
     const hasData = (state.cookies && state.cookies.length > 0) || 
@@ -41,7 +40,6 @@ async function getEarnings(deviceId = '3996d92f-b4e5-490a-b37e-3a617d48077c', st
   // Force use regular chromium instead of headless shell (which gets killed on low-memory servers)
   const os = require('os');
   const chromiumPath = `${os.homedir()}/.cache/ms-playwright/chromium-1194/chrome-linux/chrome`;
-  const fs = require('fs');
   
   let browserOptions = {
     headless: true,
