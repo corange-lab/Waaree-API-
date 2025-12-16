@@ -53,7 +53,20 @@ async function getEarnings(deviceId = '3996d92f-b4e5-490a-b37e-3a617d48077c', st
       '--disable-background-timer-throttling',
       '--disable-renderer-backgrounding',
       '--disable-backgrounding-occluded-windows',
-      '--disable-ipc-flooding-protection'
+      '--disable-ipc-flooding-protection',
+      '--disable-software-rasterizer',
+      '--disable-features=TranslateUI,BlinkGenPropertyTrees',
+      '--disable-component-extensions-with-background-pages',
+      '--disable-default-apps',
+      '--disable-sync',
+      '--metrics-recording-only',
+      '--mute-audio',
+      '--no-first-run',
+      '--safebrowsing-disable-auto-update',
+      '--disable-accelerated-2d-canvas',
+      '--disable-accelerated-video-decode',
+      '--memory-pressure-off',
+      '--max_old_space_size=128'
     ]
   };
   
