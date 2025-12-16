@@ -38,7 +38,12 @@ async function getEarnings(deviceId = '3996d92f-b4e5-490a-b37e-3a617d48077c', st
     console.warn('⚠️ Storage state file not found. Login may be required.');
   }
 
-  const browser = await chromium.launch({ 
+  // Force use regular chromium instead of headless shell (which gets killed on low-memory servers)
+  const os = require('os');
+  const chromiumPath = `${os.homedir()}/.cache/ms-playwright/chromium-1194/chrome-linux/chrome`;
+  const fs = require('fs');
+  
+  let browserOptions = {
     headless: true,
     args: [
       '--no-sandbox', 
@@ -52,7 +57,15 @@ async function getEarnings(deviceId = '3996d92f-b4e5-490a-b37e-3a617d48077c', st
       '--disable-backgrounding-occluded-windows',
       '--disable-ipc-flooding-protection'
     ]
-  });
+  };
+  
+  // Use regular chromium if it exists (more stable than headless shell)
+  if (fs.existsSync(chromiumPath)) {
+    browserOptions.executablePath = chromiumPath;
+    console.log('🔧 Using regular Chromium (not headless shell)');
+  }
+  
+  const browser = await chromium.launch(browserOptions);
   
   // Load storage state if it exists
   let contextOptions = {};
