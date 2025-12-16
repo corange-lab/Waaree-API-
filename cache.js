@@ -1,4 +1,17 @@
-const { getEarnings } = require('./api');
+// Use lightweight API (no browser launch) for low-memory servers
+// This uses Playwright's APIRequestContext instead of launching Chromium
+// Memory usage: ~10-20MB instead of ~200-400MB
+let getEarnings;
+try {
+  // Try lightweight first (uses ~10-20MB instead of ~200-400MB)
+  getEarnings = require('./api-lightweight').getEarnings;
+  console.log('🔧 Using lightweight API (no browser launch, ~10-20MB RAM)');
+} catch (e) {
+  // Fallback to full browser API if lightweight doesn't exist
+  console.warn('⚠️ Lightweight API not available, falling back to full browser API');
+  getEarnings = require('./api').getEarnings;
+  console.log('🔧 Using full browser API (fallback, ~200-400MB RAM)');
+}
 const { autoLogin } = require('./autoLogin');
 const fs = require('fs');
 
