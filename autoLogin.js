@@ -35,7 +35,6 @@ async function autoLogin() {
     // Force use regular chromium instead of headless shell
     const os = require('os');
     const chromiumPath = `${os.homedir()}/.cache/ms-playwright/chromium-1194/chrome-linux/chrome`;
-    const fs = require('fs');
     
     let browserOptions = {
       headless: true,
@@ -92,7 +91,6 @@ async function autoLogin() {
     await context.storageState({ path: storagePath });
     
     // Verify state was saved
-    const fs = require('fs');
     const savedState = JSON.parse(fs.readFileSync(storagePath, 'utf-8'));
     const hasCookies = savedState.cookies && savedState.cookies.length > 0;
     const hasLocalStorage = savedState.origins && savedState.origins.some(o => 
