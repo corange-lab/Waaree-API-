@@ -2,12 +2,13 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const { startCacheService, getCachedData, fetchData } = require('./cache');
+const { startCacheService, getCachedData, fetchData, setCachedData } = require('./cache');
 
 const app = express();
 const PORT = process.env.PORT || 8888;
 
 app.use(cors());
+app.use(express.json()); // For POST requests
 
 // Start cache service on startup
 startCacheService();
@@ -149,6 +150,30 @@ app.get('/combined', async (req, res) => {
       errno: 1,
       error: error.message,
       message: 'Failed to fetch combined solar data.'
+    });
+  }
+});
+
+// Endpoint to receive data from external source (e.g., your Mac)
+app.post('/update-cache', (req, res) => {
+  try {
+    const data = req.body;
+    if (data && (data.powerOutput || data.yieldToday)) {
+      setCachedData(data);
+      return res.json({ 
+        success: true, 
+        message: 'Cache updated',
+        data: data
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid data format'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });

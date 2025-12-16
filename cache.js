@@ -175,9 +175,18 @@ function getCachedData() {
   return cachedData;
 }
 
+// Set cached data (for external updates)
+function setCachedData(data) {
+  cachedData = data;
+  cacheTime = new Date().toISOString();
+  saveCache();
+  console.log('✅ Cache updated externally:', data?.powerOutput || 'N/A');
+}
+
 module.exports = { 
   startCacheService, 
   getCachedData, 
+  setCachedData,
   isWithinOperatingHours,
   fetchData
 };
