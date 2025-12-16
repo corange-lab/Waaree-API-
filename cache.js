@@ -119,34 +119,43 @@ async function fetchData() {
     consecutiveFailures++;
     
     // Auto-login if we have too many failures (likely session expired)
+    // NOTE: Auto-login requires browser, which may fail on low-memory servers
+    // Better to login on Mac and copy session file to server
     if (consecutiveFailures >= 2) {
       console.log('Session likely expired, attempting auto-login...');
-      const loginSuccess = await autoLogin();
-      if (loginSuccess) {
-        consecutiveFailures = 0;
-        console.log('Retrying fetch after auto-login...');
-        // Retry once after login
-        try {
-          const data = await getEarnings();
-          if (data.errno === 0 && data.result) {
-            const powerKW = data.result.power || 0;
-            const generationKWh = data.result.today?.generation || 0;
-            
-            const response = {
-              powerOutput: `${Math.round(powerKW * 1000)} Watt`,
-              yieldToday: `${parseFloat(generationKWh.toFixed(1))}kWh`,
-              spoken: `Power output is ${Math.round(powerKW * 1000)} Watt. Yield today is ${parseFloat(generationKWh.toFixed(1))}kWh.`
-            };
-            
-            cachedData = response;
-            cacheTime = new Date().toISOString();
-            saveCache();
-            console.log('✅ Data cached after auto-login:', response.powerOutput);
-            return response;
+      console.log('⚠️ Note: Auto-login requires browser. On low-memory servers,');
+      console.log('   consider logging in on Mac and copying waaree-state.json to server.');
+      try {
+        const loginSuccess = await autoLogin();
+        if (loginSuccess) {
+          consecutiveFailures = 0;
+          console.log('Retrying fetch after auto-login...');
+          // Retry once after login
+          try {
+            const data = await getEarnings();
+            if (data.errno === 0 && data.result) {
+              const powerKW = data.result.power || 0;
+              const generationKWh = data.result.today?.generation || 0;
+              
+              const response = {
+                powerOutput: `${Math.round(powerKW * 1000)} Watt`,
+                yieldToday: `${parseFloat(generationKWh.toFixed(1))}kWh`,
+                spoken: `Power output is ${Math.round(powerKW * 1000)} Watt. Yield today is ${parseFloat(generationKWh.toFixed(1))}kWh.`
+              };
+              
+              cachedData = response;
+              cacheTime = new Date().toISOString();
+              saveCache();
+              console.log('✅ Data cached after auto-login:', response.powerOutput);
+              return response;
+            }
+          } catch (retryError) {
+            console.error('Retry failed:', retryError.message);
           }
-        } catch (retryError) {
-          console.error('Retry failed:', retryError.message);
         }
+      } catch (loginError) {
+        console.error('❌ Auto-login failed (browser may be killed on low-memory server):', loginError.message);
+        console.log('💡 Solution: Login on Mac and copy waaree-state.json to server');
       }
     }
     
