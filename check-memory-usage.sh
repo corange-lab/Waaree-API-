@@ -9,20 +9,28 @@ free -h
 echo ""
 
 echo "🔢 Top 20 Processes by Memory (with details):"
-ps aux --sort=-%mem | head -21
+ps aux --sort=-%mem 2>/dev/null | head -21 || ps -eo pid,user,%mem,%cpu,comm --sort=-%mem | head -21
 echo ""
 
 echo "💾 Memory by Process Type:"
 echo "System processes:"
-ps aux | grep -E "systemd|kernel|init" | awk '{sum+=$6} END {print "   Total: " sum/1024 " MB"}'
+SYSTEM_MEM=$(ps aux 2>/dev/null | grep -E "systemd|kernel|init" | awk '{sum+=$6} END {print sum/1024}')
+echo "   Total: ${SYSTEM_MEM:-0} MB"
 echo ""
 
 echo "Node.js processes:"
-ps aux | grep "[n]ode" | awk '{sum+=$6; print "   PID " $2 ": " $6/1024 " MB - " $11} END {print "   Total: " sum/1024 " MB"}'
+NODE_PROCS=$(ps aux 2>/dev/null | grep "[n]ode" || echo "")
+if [ ! -z "$NODE_PROCS" ]; then
+    echo "$NODE_PROCS" | awk '{print "   PID " $2 ": " $6/1024 " MB - " $11}'
+    NODE_TOTAL=$(echo "$NODE_PROCS" | awk '{sum+=$6} END {print sum/1024}')
+    echo "   Total: ${NODE_TOTAL:-0} MB"
+else
+    echo "   No Node.js processes found"
+fi
 echo ""
 
-echo "Other processes:"
-ps aux | grep -vE "systemd|kernel|init|node|grep" | awk '{sum+=$6} END {print "   Total: " sum/1024 " MB"}'
+echo "Top memory consumers (all processes):"
+ps aux 2>/dev/null | sort -k4 -rn | head -15 | awk '{printf "   %6s MB (%5s%%) - %s\n", $6/1024, $4, $11}'
 echo ""
 
 echo "🔐 Check for memory limits:"
