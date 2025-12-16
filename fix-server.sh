@@ -78,3 +78,4 @@ fi
 echo "✅ Fix script complete!"
 echo "📊 Check PM2 logs: pm2 logs waaree-api --lines 50"
 
+

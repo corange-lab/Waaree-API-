@@ -84,3 +84,4 @@ pm2 restart waaree-api
 sudo npx playwright install-deps && sudo apt-get install -y xvfb && xvfb-run -a npm run login
 ```
 
+
