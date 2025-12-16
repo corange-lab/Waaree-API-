@@ -153,9 +153,15 @@ async function fetchData() {
 function startCacheService() {
   loadCache();
   
-  // Initial fetch
-  if (isWithinOperatingHours()) {
-    fetchData().catch(console.error);
+  // Don't fetch on startup if cache exists (prevents Chromium launch on server startup)
+  // Only fetch if cache is empty
+  if (!cachedData && isWithinOperatingHours()) {
+    console.log('No cache found, attempting initial fetch...');
+    fetchData().catch(err => {
+      console.log('Initial fetch failed (may be expected on low-memory servers):', err.message);
+    });
+  } else if (cachedData) {
+    console.log('✅ Using existing cache, skipping initial fetch');
   }
   
   // Schedule updates every 30 minutes
