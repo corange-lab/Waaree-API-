@@ -32,10 +32,21 @@ async function autoLogin() {
   console.log('🔐 Attempting automatic login...');
 
   try {
-    const browser = await chromium.launch({ 
+    // Force use regular chromium instead of headless shell
+    const os = require('os');
+    const chromiumPath = `${os.homedir()}/.cache/ms-playwright/chromium-1194/chrome-linux/chrome`;
+    const fs = require('fs');
+    
+    let browserOptions = {
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-    });
+    };
+    
+    if (fs.existsSync(chromiumPath)) {
+      browserOptions.executablePath = chromiumPath;
+    }
+    
+    const browser = await chromium.launch(browserOptions);
     const context = await browser.newContext();
     const page = await context.newPage();
 
