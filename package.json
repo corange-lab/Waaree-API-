@@ -6,6 +6,7 @@
   "scripts": {
     "login": "node scripts/saveStorage.js",
     "start": "node server.js",
+    "test": "node test-login.js",
     "postinstall": "npx --yes playwright install chromium"
   },
   "keywords": ["waaree", "solar", "earnings", "api"],

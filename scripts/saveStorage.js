@@ -100,15 +100,15 @@ async function main() {
       { waitUntil: 'networkidle', timeout: 30000 }
     );
     
-    // Wait for page to fully load and initialize
-    await page.waitForTimeout(5000);
+    // Wait for page to fully load and initialize - increased to 8 seconds
+    await page.waitForTimeout(8000);
     console.log('✅ Device page loaded');
     
     // Verify we can access the API - this ensures session is valid
     // Make multiple API calls to ensure session is fully established
     try {
       console.log('🔍 Testing API to verify session...');
-      await page.waitForTimeout(3000); // Wait for any pending requests
+      await page.waitForTimeout(5000); // Wait longer for any pending requests
       
       const apiTest = await page.evaluate(async (id) => {
         try {
@@ -121,9 +121,18 @@ async function main() {
               'Content-Type': 'application/json'
             }
           });
+          
+          const contentType = resp.headers.get('content-type');
           if (!resp.ok) {
-            return { success: false, status: resp.status, statusText: resp.statusText };
+            return { success: false, status: resp.status, statusText: resp.statusText, contentType };
           }
+          
+          // Check if response is JSON
+          if (!contentType || !contentType.includes('application/json')) {
+            const text = await resp.text();
+            return { success: false, error: 'Non-JSON response received', contentType, preview: text.substring(0, 100) };
+          }
+          
           const data = await resp.json();
           return { 
             success: data.errno === 0, 
@@ -143,23 +152,46 @@ async function main() {
           errno: apiTest.errno,
           error: apiTest.error,
           status: apiTest.status,
+          contentType: apiTest.contentType,
           hasResult: apiTest.hasResult
         });
-        console.log('⚠️ Session may not be fully established. Try waiting longer or check credentials.');
-      }
-      
-      // Try one more time after a delay
-      await page.waitForTimeout(2000);
-      const retryTest = await page.evaluate(async (id) => {
-        const url = new URL('/c/v0/device/earnings', window.location.origin);
-        url.searchParams.set('deviceID', id);
-        const resp = await fetch(url, { credentials: 'include' });
-        const data = await resp.json();
-        return { success: data.errno === 0, errno: data.errno };
-      }, deviceId);
-      
-      if (retryTest.success) {
-        console.log('✅ Retry API test successful');
+        
+        // If we got HTML instead of JSON, wait longer and retry
+        if (apiTest.contentType && !apiTest.contentType.includes('application/json')) {
+          console.log('⏳ Received HTML instead of JSON, waiting 10s and retrying...');
+          await page.waitForTimeout(10000);
+          
+          const retryTest = await page.evaluate(async (id) => {
+            try {
+              const url = new URL('/c/v0/device/earnings', window.location.origin);
+              url.searchParams.set('deviceID', id);
+              const resp = await fetch(url, { 
+                credentials: 'include',
+                headers: { 
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json'
+                }
+              });
+              const contentType = resp.headers.get('content-type');
+              if (!contentType || !contentType.includes('application/json')) {
+                return { success: false, error: 'Still receiving non-JSON response' };
+              }
+              const data = await resp.json();
+              return { success: data.errno === 0, errno: data.errno };
+            } catch (e) {
+              return { success: false, error: e.message };
+            }
+          }, deviceId);
+          
+          if (retryTest.success) {
+            console.log('✅ Retry API test successful');
+          } else {
+            console.log('⚠️ Retry failed:', retryTest.error);
+            console.log('⚠️ Session may not be fully established. You may need to wait and try again.');
+          }
+        } else {
+          console.log('⚠️ Session may not be fully established. Try waiting longer or check credentials.');
+        }
       }
     } catch (apiError) {
       console.log('⚠️ API test error:', apiError.message);
