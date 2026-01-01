@@ -1,5 +1,6 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
+require('dotenv').config();
 
 async function smartClick(page, selectors) {
   for (const sel of selectors) {

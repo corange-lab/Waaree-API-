@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+require('dotenv').config();
 
 function normalize(raw) {
   const r = raw && raw.result ? raw.result : {};

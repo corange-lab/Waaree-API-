@@ -1,4 +1,5 @@
 // Waaree Earnings API - Filtered Endpoint with Cache
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -6,6 +7,7 @@ const { startCacheService, getCachedData, fetchData, setCachedData } = require('
 
 const app = express();
 const PORT = process.env.PORT || 8888;
+const SOLAX_API_URL = process.env.SOLAX_API_URL || 'https://officialmobileunlocking.com/solar/solax_combined.php?user=km_patel';
 
 app.use(cors());
 app.use(express.json()); // For POST requests
@@ -16,7 +18,7 @@ startCacheService();
 // Function to fetch Solax data
 async function fetchSolaxData() {
   try {
-    const response = await axios.get('https://officialmobileunlocking.com/solar/solax_combined.php?user=km_patel', {
+    const response = await axios.get(SOLAX_API_URL, {
       timeout: 10000
     });
     return response.data;
@@ -55,7 +57,7 @@ async function fetchWaareeData() {
     // Fallback to localhost endpoint if cache is empty
     console.log('⚠️ Cache empty, trying localhost endpoint...');
     try {
-      const response = await axios.get('http://localhost:8888', {
+      const response = await axios.get(`http://localhost:${PORT}`, {
         timeout: 10000
       });
       if (response.data && response.data.powerOutput && response.data.yieldToday) {
@@ -222,6 +224,10 @@ app.get('/', async (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`📊 Access at: http://0.0.0.0:${PORT} or http://YOUR_PUBLIC_IP:${PORT}`);
+  console.log(`📊 Local access: http://localhost:${PORT}`);
+  console.log(`🌐 Public access: http://80.225.207.88:${PORT}`);
+  console.log(`\n📍 Available endpoints:`);
+  console.log(`   Waaree only: http://80.225.207.88:${PORT}/`);
+  console.log(`   Combined:    http://80.225.207.88:${PORT}/combined`);
 });
 

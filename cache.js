@@ -1,6 +1,7 @@
 // Use lightweight API (no browser launch) for low-memory servers
 // This uses Playwright's APIRequestContext instead of launching Chromium
 // Memory usage: ~10-20MB instead of ~200-400MB
+require('dotenv').config();
 let getEarnings;
 try {
   // Try lightweight first (uses ~10-20MB instead of ~200-400MB)

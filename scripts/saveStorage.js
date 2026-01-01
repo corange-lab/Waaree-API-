@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+require('dotenv').config();
 
 async function smartClick(page, selectors) {
   for (const sel of selectors) {
@@ -45,30 +46,52 @@ async function main() {
 
   // Go directly to login
   await page.goto('https://digital.waaree.com/login', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2000); // Wait for page to fully render
 
   // Try to fill username
-  await smartFill(page, [
+  const usernameFilled = await smartFill(page, [
     'input[name="username"]',
     'input#username',
     'input[placeholder*="User"]',
     'input[type="text"]',
   ], username);
+  
+  if (!usernameFilled) {
+    console.error('❌ Could not find username field');
+    throw new Error('Username field not found');
+  }
+  console.log('✅ Username filled');
 
   // Try to fill password
-  await smartFill(page, [
+  const passwordFilled = await smartFill(page, [
     'input[name="password"]',
     'input#password',
     'input[placeholder*="Password"]',
     'input[type="password"]',
   ], password);
+  
+  if (!passwordFilled) {
+    console.error('❌ Could not find password field');
+    throw new Error('Password field not found');
+  }
+  console.log('✅ Password filled');
+
+  // Wait a moment before clicking
+  await page.waitForTimeout(500);
 
   // Try clicking Login/Sign In button
-  await smartClick(page, [
+  const clicked = await smartClick(page, [
     'button[type="submit"]',
     'button:has-text("Login")',
     'button:has-text("Sign In")',
     'text=Login',
   ]);
+  
+  if (!clicked) {
+    console.error('❌ Could not find login button');
+    throw new Error('Login button not found');
+  }
+  console.log('✅ Login button clicked');
 
   // Wait for navigation away from login - ensure we're actually logged in
   console.log('Waiting for login to complete...');
@@ -105,10 +128,17 @@ async function main() {
     console.log('✅ Device page loaded');
     
     // Verify we can access the API - this ensures session is valid
-    // Make multiple API calls to ensure session is fully established
-    try {
-      console.log('🔍 Testing API to verify session...');
-      await page.waitForTimeout(5000); // Wait longer for any pending requests
+    // NOTE: The session may take 10-20 seconds to fully activate on the server side
+    // This test may fail even though the session is valid
+    const skipAPITest = process.env.SKIP_API_TEST === 'true';
+    
+    if (skipAPITest) {
+      console.log('⏭️  Skipping API test (SKIP_API_TEST=true)');
+    } else {
+      try {
+        console.log('🔍 Testing API to verify session...');
+        console.log('⚠️  Note: API test may fail even if session is valid (server needs 10-20s to activate)');
+        await page.waitForTimeout(5000); // Wait longer for any pending requests
       
       const apiTest = await page.evaluate(async (id) => {
         try {
@@ -192,10 +222,11 @@ async function main() {
         } else {
           console.log('⚠️ Session may not be fully established. Try waiting longer or check credentials.');
         }
+      } // End of apiTest.success else block
+      } catch (apiError) {
+        console.log('⚠️ API test error:', apiError.message);
       }
-    } catch (apiError) {
-      console.log('⚠️ API test error:', apiError.message);
-    }
+    } // End of skipAPITest else block
   } catch (e) {
     console.error('❌ Error navigating to device page:', e.message);
     throw e;
@@ -216,6 +247,15 @@ async function main() {
     console.log(`\n✅ Saved storage state to: ${storagePath}`);
     console.log(`   - Cookies: ${hasCookies ? 'Yes' : 'No'}`);
     console.log(`   - LocalStorage: ${hasLocalStorage ? 'Yes' : 'No'}`);
+    
+    if (!hasCookies && hasLocalStorage) {
+      console.log('\n💡 TIP: Session saved successfully!');
+      console.log('   The API test may show warnings, but the session usually works.');
+      console.log('   To verify your session is valid, run:');
+      console.log('   npm run test');
+      console.log('\n   Or just start the server:');
+      console.log('   npm start');
+    }
   } else {
     console.warn(`\n⚠️ Storage state saved but appears empty. Session may not work.`);
   }

@@ -1,6 +1,7 @@
 // Simple API wrapper - pure Node.js code you can call
 const { chromium } = require('playwright');
 const fs = require('fs');
+require('dotenv').config();
 
 function normalize(raw) {
   const r = raw && raw.result ? raw.result : {};

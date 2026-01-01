@@ -5,6 +5,7 @@
  * Usage: node test-login.js
  */
 
+require('dotenv').config();
 const { getEarnings } = require('./api');
 const fs = require('fs');
 

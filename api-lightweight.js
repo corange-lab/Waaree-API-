@@ -2,6 +2,7 @@
 // This uses ~10-20MB instead of ~200-400MB for full Chromium
 const { request } = require('playwright');
 const fs = require('fs');
+require('dotenv').config();
 
 function normalize(raw) {
   const r = raw && raw.result ? raw.result : {};
