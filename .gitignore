@@ -1,5 +1,4 @@
 # Environment variables
-.env
 
 # Session data
 waaree-state.json
@@ -21,3 +20,4 @@ node_modules/
 *.swp
 *.swo
 *~
+config.bat

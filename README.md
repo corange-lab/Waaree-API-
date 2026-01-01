@@ -4,9 +4,9 @@ Simple, fast, and lightweight API for fetching solar power data from Waaree and 
 
 ## 🌟 Features
 
-- ✅ **Lightweight** - Uses only ~10-20MB RAM (vs 200-400MB for full browser)
+- ✅ **Reliable** - Uses full browser for proper authentication
 - ✅ **Fast** - Cached responses in <50ms, fresh data in 2-5 seconds
-- ✅ **Reliable** - Auto-retry with session management
+- ✅ **Auto-retry** - Automatic session management and re-login
 - ✅ **Secure** - Environment variables for credentials (not hardcoded)
 - ✅ **Combined Data** - Supports both Waaree and Solax solar systems
 
@@ -101,6 +101,63 @@ curl http://localhost:3001
 # External
 curl http://80.225.207.88:3001
 ```
+
+## 🔐 Session Management
+
+### You DON'T Need to Login Every Time!
+
+The system has **automatic re-login** built-in. You only need to manually login once during initial setup.
+
+**How it works:**
+
+1. **First Time (Once Only):**
+   ```bash
+   npm run login
+   ```
+   Creates session file that lasts hours/days
+
+2. **Normal Operation:**
+   ```bash
+   npm start  # or pm2 start
+   ```
+   Server uses saved session, no login needed ✅
+
+3. **When Session Expires:**
+   - System detects expiration (error 41809)
+   - Automatically launches browser in background
+   - Logs in using credentials from `.env`
+   - Saves new session
+   - Continues working
+   - **Total downtime:** ~10-15 seconds
+
+**Evidence from server logs:**
+```
+❌ API returned error: 41809
+Session likely expired, attempting auto-login...
+🔐 Attempting automatic login...
+✅ Successfully navigated away from login page
+✅ Auto-login successful, storage saved
+Retrying fetch after auto-login...
+```
+
+**You don't need to do anything!** Auto-relogin handles everything automatically.
+
+### Session Lifecycle
+
+```
+[Manual Login] → [Session Valid] → [Expires] → [Auto-Relogin] → [Session Valid]
+     once         hours/days         41809        automatic        continues
+```
+
+### When Does Session Expire?
+
+- Typically lasts: **Several hours to days**
+- May expire if:
+  - Waaree server maintenance
+  - Password changed
+  - Account accessed from another location
+
+**But you don't care!** Auto-relogin handles it.
 
 ## 📡 API Endpoints
 
@@ -300,9 +357,9 @@ sudo journalctl -u waaree-api -f
 - Session persists across restarts
 
 ### 2. Data Fetching
-- Uses lightweight Playwright APIRequestContext (no browser launch)
-- Makes direct HTTP requests with saved session
-- Memory usage: ~10-20MB instead of ~200-400MB
+- Uses full Playwright browser for authentication compatibility
+- Makes API calls with saved session through browser context
+- Memory usage: ~200-400MB (necessary for Waaree's authentication)
 
 ### 3. Caching
 - Data cached for 30 minutes
@@ -324,8 +381,8 @@ sudo journalctl -u waaree-api -f
 
 | Resource | Usage |
 |----------|-------|
-| **Memory (Lightweight)** | 10-20MB |
-| **Memory (Full Browser)** | 200-400MB |
+| **Memory** | 200-400MB |
+| **Startup Time** | 5-10 seconds |
 
 ## 🛠️ Available Commands
 
@@ -346,8 +403,8 @@ Waaree-API-/
 ├── README.md                 # This file
 ├── server.js                 # Express API server
 ├── cache.js                  # Cache management
-├── api-lightweight.js        # Lightweight HTTP client (10-20MB)
-├── api.js                    # Full browser API (fallback)
+├── api.js                    # Browser-based API (used)
+├── api-lightweight.js        # Lightweight API (not compatible with Waaree)
 ├── autoLogin.js              # Auto-login module
 ├── test-login.js             # Session test script
 └── scripts/
@@ -414,17 +471,20 @@ PORT=3002  # or any available port
 
 **Problem:** Out of memory on server
 
-**Solution:** The system uses lightweight mode by default (10-20MB). If login fails on low-memory server, login on your Mac and copy session:
+**Solution:** The system requires ~200-400MB RAM for proper Waaree authentication. If your server has insufficient memory:
 
+1. Upgrade to at least 1GB RAM
+2. Or use a swap file:
 ```bash
-# On Mac
-npm run login
+sudo fallocate -l 1G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+```
 
-# Copy to server
-scp .env waaree-state.json ubuntu@80.225.207.88:~/Waaree-API-/
-
-# On server
-npm start
+3. Make swap permanent:
+```bash
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
 ---
@@ -498,7 +558,11 @@ The cache auto-refreshes only during solar operating hours (7 AM - 7 PM IST). Ou
 
 ### Memory Usage
 
-The system automatically uses the lightweight API (`api-lightweight.js`) which uses Playwright's APIRequestContext instead of launching a full browser. This reduces memory from ~200-400MB to ~10-20MB.
+The system uses a full browser context (~200-400MB RAM) which is necessary for Waaree's authentication system. The lightweight API doesn't work due to Waaree's session management requirements (error 41809).
+
+**Server Requirements:**
+- Minimum: 512MB RAM + 512MB swap
+- Recommended: 1GB RAM or more
 
 ## 📄 License
 
