@@ -30,8 +30,16 @@ async function main() {
 
   const userDataDir = process.env.WAAREE_USER_DATA_DIR || '.waaree-user-data';
   const browserContext = await chromium.launchPersistentContext(userDataDir, {
-    headless: false,
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--single-process'
+    ],
   });
+  
 
   const page = await browserContext.newPage();
 
