@@ -1,4 +1,5 @@
 # Environment variables
+.env
 
 # Session data
 waaree-state.json
@@ -7,6 +8,14 @@ waaree-state.json
 # Cache
 cache.json
 *.log
+
+# Database files (local only, server maintains its own database)
+data/*.json
+data/*.json.tmp
+data/*.db
+data/*.sqlite
+*.db
+*.sqlite
 
 # Node modules
 node_modules/

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SolarPulse | Waaree & Solax 6-Month Energy Analytics</title>
+  <meta name="description" content="Real-time monitoring and 6-month historical analytics dashboard for Waaree and Solax solar power systems.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="dashboard-wrapper">
+    <!-- Top Navigation Bar -->
+    <header class="dashboard-header" id="main-header">
+      <div class="brand-container">
+        <div class="brand-logo-glow">
+          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">SOLARPULSE <span class="brand-badge">PRO</span></div>
+          <div class="brand-subtitle">Waaree & Solax Dual Inverter Analytics (6-Month Database)</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="status-pill" id="live-status-pill">
+          <span class="pulsing-dot"></span>
+          <span id="system-status-text">SYSTEM ONLINE</span>
+        </div>
+
+        <div class="time-pill">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span id="current-ist-time">--:-- IST</span>
+        </div>
+
+        <button class="btn btn-secondary" id="sync-btn" title="Refresh Live Data">
+          <svg class="sync-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span id="sync-text">Sync Now</span>
+        </button>
+
+        <div class="export-dropdown">
+          <button class="btn btn-primary" id="export-menu-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Export Data</span>
+          </button>
+          <div class="export-menu" id="export-dropdown-menu">
+            <a href="/api/export?format=csv" download class="export-item" id="export-csv-btn">
+              <span class="format-badge csv">CSV</span>
+              <div>
+                <div class="export-item-title">Spreadsheet (CSV)</div>
+                <div class="export-item-desc">For Excel, Numbers, Google Sheets</div>
+              </div>
+            </a>
+            <a href="/api/export?format=json" download class="export-item" id="export-json-btn">
+              <span class="format-badge json">JSON</span>
+              <div>
+                <div class="export-item-title">Raw JSON Database</div>
+                <div class="export-item-desc">Complete daily & intraday logs</div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="dashboard-main">
+
+      <!-- Section 1: Live Telemetry Cards -->
+      <section class="telemetry-section" id="live-telemetry">
+        <!-- Combined Hero Card -->
+        <div class="glass-card hero-card">
+          <div class="card-glow-amber"></div>
+          <div class="card-header">
+            <div class="card-tag">TOTAL COMBINED OUTPUT</div>
+            <div class="live-indicator">LIVE</div>
+          </div>
+          <div class="hero-metric-container">
+            <div class="hero-power-val" id="total-power-disp">0 <span class="unit">Watt</span></div>
+            <div class="hero-power-bar-wrap">
+              <div class="hero-power-bar" id="total-power-bar" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="hero-footer-grid">
+            <div class="hero-sub-stat">
+              <span class="sub-label">Today's Generation</span>
+              <span class="sub-value highlight" id="total-yield-disp">0.0 <span class="unit">kWh</span></span>
+            </div>
+            <div class="hero-sub-stat">
+              <span class="sub-label">Today's Peak Output</span>
+              <span class="sub-value" id="today-peak-power-disp">0 <span class="unit">Watt</span></span>
+            </div>
+            <div class="hero-sub-stat">
+              <span class="sub-label">Active System Split</span>
+              <span class="sub-value" id="system-split-disp">50% / 50%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Waaree System Card -->
+        <div class="glass-card inverter-card waaree-accent">
+          <div class="card-header">
+            <div class="inverter-identity">
+              <div class="inverter-avatar waaree">W</div>
+              <div>
+                <div class="inverter-name">Waaree Solar</div>
+                <div class="inverter-role">Primary System</div>
+              </div>
+            </div>
+            <span class="badge badge-amber">ONLINE</span>
+          </div>
+          <div class="inverter-metrics">
+            <div class="metric-row">
+              <span class="label">Current Power</span>
+              <span class="metric-big" id="waaree-power-disp">0 <span class="unit">Watt</span></span>
+            </div>
+            <div class="metric-row">
+              <span class="label">Today's Yield</span>
+              <span class="metric-med" id="waaree-yield-disp">0.0 <span class="unit">kWh</span></span>
+            </div>
+            <div class="metric-row">
+              <span class="label">Today's Peak Power</span>
+              <span class="metric-small" id="waaree-peak-disp">0 <span class="unit">W</span></span>
+            </div>
+          </div>
+          <div class="inverter-bar-wrap">
+            <div class="inverter-bar waaree-bg" id="waaree-bar" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Solax System Card -->
+        <div class="glass-card inverter-card solax-accent">
+          <div class="card-header">
+            <div class="inverter-identity">
+              <div class="inverter-avatar solax">S</div>
+              <div>
+                <div class="inverter-name">Solax Solar</div>
+                <div class="inverter-role">Secondary System</div>
+              </div>
+            </div>
+            <span class="badge badge-cyan">ONLINE</span>
+          </div>
+          <div class="inverter-metrics">
+            <div class="metric-row">
+              <span class="label">Current Power</span>
+              <span class="metric-big" id="solax-power-disp">0 <span class="unit">Watt</span></span>
+            </div>
+            <div class="metric-row">
+              <span class="label">Today's Yield</span>
+              <span class="metric-med" id="solax-yield-disp">0.0 <span class="unit">kWh</span></span>
+            </div>
+            <div class="metric-row">
+              <span class="label">Today's Peak Power</span>
+              <span class="metric-small" id="solax-peak-disp">0 <span class="unit">W</span></span>
+            </div>
+          </div>
+          <div class="inverter-bar-wrap">
+            <div class="inverter-bar solax-bg" id="solax-bar" style="width: 0%"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: 6-Month Key Performance Indicators (KPIs) -->
+      <section class="kpi-section" id="kpi-overview">
+        <div class="glass-card kpi-card">
+          <div class="kpi-icon-wrap emerald">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+          </div>
+          <div class="kpi-info">
+            <div class="kpi-label">6-Month Total Generation</div>
+            <div class="kpi-val" id="kpi-total-yield">0 <span class="unit">kWh</span></div>
+            <div class="kpi-sub" id="kpi-days-tracked">180 days stored</div>
+          </div>
+        </div>
+
+        <div class="glass-card kpi-card">
+          <div class="kpi-icon-wrap amber">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2"></path>
+              <path d="M12 20v2"></path>
+              <path d="m4.93 4.93 1.41 1.41"></path>
+              <path d="m17.66 17.66 1.41 1.41"></path>
+              <path d="M2 12h2"></path>
+              <path d="M20 12h2"></path>
+              <path d="m6.34 17.66-1.41 1.41"></path>
+              <path d="m19.07 4.93-1.41 1.41"></path>
+            </svg>
+          </div>
+          <div class="kpi-info">
+            <div class="kpi-label">Daily Average Generation</div>
+            <div class="kpi-val" id="kpi-daily-avg">0.0 <span class="unit">kWh/day</span></div>
+            <div class="kpi-sub">Steady baseline</div>
+          </div>
+        </div>
+
+        <div class="glass-card kpi-card">
+          <div class="kpi-icon-wrap violet">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+          </div>
+          <div class="kpi-info">
+            <div class="kpi-label">Record Generation Day</div>
+            <div class="kpi-val" id="kpi-best-yield">0.0 <span class="unit">kWh</span></div>
+            <div class="kpi-sub" id="kpi-best-date">--</div>
+          </div>
+        </div>
+
+        <div class="glass-card kpi-card">
+          <div class="kpi-icon-wrap cyan">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </div>
+          <div class="kpi-info">
+            <div class="kpi-label">All-Time Peak Power</div>
+            <div class="kpi-val" id="kpi-peak-power">0 <span class="unit">Watt</span></div>
+            <div class="kpi-sub" id="kpi-peak-date">--</div>
+          </div>
+        </div>
+
+        <div class="glass-card kpi-card">
+          <div class="kpi-icon-wrap green">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+          </div>
+          <div class="kpi-info">
+            <div class="kpi-label">Est. Financial Savings</div>
+            <div class="kpi-val" id="kpi-savings">₹0</div>
+            <div class="kpi-sub">@ ₹7.5 / unit avg</div>
+          </div>
+        </div>
+
+        <div class="glass-card kpi-card">
+          <div class="kpi-icon-wrap teal">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path>
+              <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path>
+            </svg>
+          </div>
+          <div class="kpi-info">
+            <div class="kpi-label">Carbon Offset (CO₂)</div>
+            <div class="kpi-val" id="kpi-co2">0 <span class="unit">kg</span></div>
+            <div class="kpi-sub">Clean green energy</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Interactive Historical Charts -->
+      <section class="charts-section">
+        <!-- Main Historical Generation Bar Chart -->
+        <div class="glass-card chart-card full-width">
+          <div class="chart-header">
+            <div>
+              <h2 class="chart-title">Daily Energy Generation History</h2>
+              <p class="chart-desc">Historical daily solar yield (kWh) for Waaree, Solax, and Combined Total</p>
+            </div>
+            <div class="range-selector" id="history-range-selector">
+              <button class="range-btn" data-range="7d">7D</button>
+              <button class="range-btn active" data-range="30d">30D</button>
+              <button class="range-btn" data-range="90d">90D</button>
+              <button class="range-btn" data-range="180d">6 Months</button>
+              <button class="range-btn" data-range="all">All</button>
+            </div>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="daily-history-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Left: Intraday Power Curve (Watts vs Hour) -->
+        <div class="glass-card chart-card half-width">
+          <div class="chart-header">
+            <div>
+              <h2 class="chart-title">Intraday Solar Power Curve</h2>
+              <p class="chart-desc">Power output (Watts) throughout daylight hours</p>
+            </div>
+            <div class="date-picker-wrap">
+              <input type="date" id="intraday-date-picker" class="date-input">
+            </div>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="intraday-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Right: Monthly Generation Breakdown -->
+        <div class="glass-card chart-card half-width">
+          <div class="chart-header">
+            <div>
+              <h2 class="chart-title">Monthly Generation Comparison</h2>
+              <p class="chart-desc">Month-by-month solar production breakdown</p>
+            </div>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="monthly-chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: Historical Data Records Table -->
+      <section class="table-section">
+        <div class="glass-card table-card">
+          <div class="table-header">
+            <div>
+              <h2 class="table-title">6-Month Solar Generation Log</h2>
+              <p class="table-desc">Detailed day-by-day records stored in server database</p>
+            </div>
+            <div class="table-actions">
+              <input type="text" id="table-search" class="search-input" placeholder="Search by date (YYYY-MM-DD)...">
+              <a href="/api/export?format=csv" class="btn btn-secondary btn-sm" id="table-export-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Download CSV
+              </a>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" id="history-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Waaree Yield</th>
+                  <th>Solax Yield</th>
+                  <th>Total Daily Yield</th>
+                  <th>Peak Power</th>
+                  <th>Readings</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body">
+                <tr>
+                  <td colspan="7" class="loading-cell">Loading historical records...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-footer">
+            <div class="table-summary" id="table-record-count">Showing 0 records</div>
+            <div class="table-pagination" id="table-pagination">
+              <!-- Pagination controls populated by JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="dashboard-footer">
+      <div class="footer-left">
+        SolarPulse Analytics Engine &bull; Independent Server Database (180-day Auto-Pruning)
+      </div>
+      <div class="footer-right">
+        API Status: <span class="status-dot"></span> <span id="api-status-label">Connected</span> &bull; Port: 3001
+      </div>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

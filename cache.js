@@ -6,6 +6,10 @@ const { getEarnings } = require('./api');
 console.log('🔧 Using full browser API (~200-400MB RAM, required for Waaree auth)');
 const { autoLogin } = require('./autoLogin');
 const fs = require('fs');
+const axios = require('axios');
+const db = require('./data/database');
+
+const SOLAX_API_URL = process.env.SOLAX_API_URL || 'https://officialmobileunlocking.com/solar/solax_combined.php?user=km_patel';
 
 let cachedData = null;
 let cacheTime = null;
@@ -101,6 +105,7 @@ async function fetchData() {
       consecutiveFailures = 0; // Reset failure counter on success
       
       console.log('✅ Data cached:', response.powerOutput, 'Yield:', response.yieldToday);
+      recordSnapshot().catch(err => console.error('Snapshot error:', err.message));
       return response;
     }
     
@@ -163,6 +168,34 @@ async function fetchData() {
   }
 }
 
+// Record a combined snapshot to database
+async function recordSnapshot(customSolaxData = null) {
+  try {
+    let solaxData = customSolaxData;
+    if (!solaxData) {
+      try {
+        const resp = await axios.get(SOLAX_API_URL, { timeout: 8000 });
+        solaxData = resp.data;
+      } catch (err) {
+        console.warn('⚠️ [Cache] Failed to fetch Solax data for snapshot:', err.message);
+      }
+    }
+
+    const waareeData = getCachedData();
+    if (waareeData || solaxData) {
+      return db.recordReading({
+        waareePower: waareeData?.powerOutput,
+        waareeYield: waareeData?.yieldToday,
+        solaxPower: solaxData?.powerOutput,
+        solaxYield: solaxData?.yieldToday,
+        timestamp: new Date()
+      });
+    }
+  } catch (err) {
+    console.error('❌ [Cache] Error recording snapshot to database:', err.message);
+  }
+}
+
 // Initialize cache system
 function startCacheService() {
   loadCache();
@@ -186,8 +219,21 @@ function startCacheService() {
       console.log('Outside operating hours (7 AM - 7 PM IST), skipping fetch');
     }
   }, 30 * 60 * 1000); // 30 minutes
+
+  // Schedule database snapshot logging every 15 minutes during operating hours
+  setInterval(async () => {
+    if (isWithinOperatingHours()) {
+      console.log('📸 [Cache] Recording periodic 15-minute solar snapshot...');
+      await recordSnapshot().catch(console.error);
+    }
+  }, 15 * 60 * 1000); // 15 minutes
+
+  // Take an initial snapshot shortly after startup if data exists
+  setTimeout(() => {
+    recordSnapshot().catch(console.error);
+  }, 5000);
   
-  console.log('⚡ Cache service started. Updates every 30 minutes (7 AM - 7 PM IST)');
+  console.log('⚡ Cache service started. Waaree updates every 30m, snapshots recorded every 15m (7 AM - 7 PM IST)');
 }
 
 // Get cached data
@@ -201,6 +247,7 @@ function setCachedData(data) {
   cacheTime = new Date().toISOString();
   saveCache();
   console.log('✅ Cache updated externally:', data?.powerOutput || 'N/A');
+  recordSnapshot().catch(err => console.error('Snapshot error:', err.message));
 }
 
 module.exports = { 
@@ -208,5 +255,6 @@ module.exports = {
   getCachedData, 
   setCachedData,
   isWithinOperatingHours,
-  fetchData
+  fetchData,
+  recordSnapshot
 };
