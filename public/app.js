@@ -216,7 +216,7 @@ async function fetchAnalytics() {
       const a = data.analytics;
 
       document.getElementById('kpi-total-yield').innerHTML = `${a.totalYield.total.toLocaleString()} <span class="unit">kWh</span>`;
-      document.getElementById('kpi-days-tracked').textContent = `${a.totalDays} days in database`;
+      document.getElementById('kpi-days-tracked').textContent = `${a.totalDays} ${a.totalDays === 1 ? 'day' : 'days'} in database`;
 
       document.getElementById('kpi-daily-avg').innerHTML = `${a.dailyAverageYield.total.toFixed(1)} <span class="unit">kWh/day</span>`;
 

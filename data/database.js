@@ -66,8 +66,10 @@ class SolarDatabase {
         this.lastSaved = parsed.lastSaved || null;
         console.log(`📊 [Database] Loaded ${Object.keys(this.dailySummaries).length} days and ${this.readings.length} readings from disk.`);
       } else {
-        console.log('📊 [Database] No existing database found. Initializing fresh storage...');
-        this.seedInitialHistory();
+        console.log('📊 [Database] No existing database found. Starting fresh real-data storage from today...');
+        this.dailySummaries = {};
+        this.readings = [];
+        this.saveToDisk();
       }
 
       this.pruneOldData();
@@ -75,7 +77,7 @@ class SolarDatabase {
       console.error('❌ [Database] Initialization error:', err.message);
       this.dailySummaries = {};
       this.readings = [];
-      this.seedInitialHistory();
+      this.saveToDisk();
     }
   }
 
@@ -489,121 +491,26 @@ class SolarDatabase {
     console.log(`✅ [Database] Calibration complete. 10 September is now ${this.dailySummaries[referenceDate]?.total?.finalYield} units.`);
   }
 
-  // Intelligent baseline historical seed
-  // Populates realistic solar production data for the preceding 180 days
-  // matching the real system's ~35 kWh/day generation capacity on sunny days
-  seedInitialHistory() {
-    console.log('🌱 [Database] Seeding 180 days of realistic baseline solar history (~35 kWh/day peak capacity)...');
-    const now = new Date();
+  // Reset database to contain ONLY real data starting from today
+  resetToRealDataOnly(todayReading = null) {
+    console.log('🧹 [Database] Clearing all assumed/simulated history. Keeping only real data starting from today.');
+    const todayStr = this.formatISTDate(new Date());
 
-    for (let i = 180; i >= 1; i--) {
-      const pastDate = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000));
-      const dateStr = this.formatISTDate(pastDate);
-
-      // Deterministic variation using day of year
-      const dayOfYear = Math.floor((pastDate - new Date(pastDate.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
-      
-      // Seasonal curve: higher production in summer/spring (Mar-May), lower in monsoon (July-Aug), moderate in winter
-      const seasonalFactor = 0.85 + 0.25 * Math.sin((dayOfYear - 80) * (2 * Math.PI / 365));
-      // Weather fluctuation: sunny vs occasional overcast
-      const weatherFactor = 0.80 + (((dayOfYear * 13) % 100) / 100) * 0.35;
-      
-      // Calibrated to ~35 units/day combined output
-      const baseWaareeYield = 19.0 * seasonalFactor * weatherFactor;
-      const baseSolaxYield = 16.0 * seasonalFactor * weatherFactor;
-
-      const wYield = parseFloat(Math.max(7.0, baseWaareeYield).toFixed(1));
-      const sYield = parseFloat(Math.max(5.5, baseSolaxYield).toFixed(1));
-      const tYield = parseFloat((wYield + sYield).toFixed(1));
-
-      const wPeak = Math.round(3600 + (((dayOfYear * 13) % 650)));
-      const sPeak = Math.round(3100 + (((dayOfYear * 17) % 600)));
-      const tPeak = wPeak + sPeak;
-
-      this.dailySummaries[dateStr] = {
-        date: dateStr,
-        waaree: { peakPower: wPeak, finalYield: wYield },
-        solax: { peakPower: sPeak, finalYield: sYield },
-        total: { peakPower: tPeak, finalYield: tYield },
-        readingsCount: 24,
-        firstReadingAt: `${dateStr}T01:30:00.000Z`, // 7:00 AM IST
-        lastReadingAt: `${dateStr}T13:30:00.000Z`   // 7:00 PM IST
-      };
+    const todaySummary = this.dailySummaries[todayStr];
+    this.dailySummaries = {};
+    if (todaySummary) {
+      this.dailySummaries[todayStr] = todaySummary;
     }
 
-    // Explicitly set reference date 2026-09-10 to ~35 units
-    if (this.dailySummaries['2026-09-10']) {
-      this.dailySummaries['2026-09-10'].waaree.finalYield = 19.2;
-      this.dailySummaries['2026-09-10'].solax.finalYield = 15.8;
-      this.dailySummaries['2026-09-10'].total.finalYield = 35.0;
-      this.dailySummaries['2026-09-10'].waaree.peakPower = 3920;
-      this.dailySummaries['2026-09-10'].solax.peakPower = 3280;
-      this.dailySummaries['2026-09-10'].total.peakPower = 7200;
-    }
+    // Keep only today's actual readings
+    this.readings = this.readings.filter(r => r.istDate === todayStr);
 
-    // Seed realistic intraday readings for today up to current hour
-    const todayStr = this.formatISTDate(now);
-    const istNow = this.getISTDate(now);
-    const currentHour = istNow.getHours();
-    const currentMin = istNow.getMinutes();
-
-    let cumulativeW = 0;
-    let cumulativeS = 0;
-
-    for (let h = 7; h <= Math.min(18, currentHour); h++) {
-      const maxMins = (h === currentHour) ? currentMin : 45;
-      for (let m = 0; m <= maxMins; m += 15) {
-        // Solar bell curve peaked around 12:30 PM (hour 12.5)
-        const hourFloat = h + (m / 60);
-        const solarFactor = Math.max(0, Math.sin(((hourFloat - 6) / 12) * Math.PI));
-        
-        const wP = Math.round(1950 * Math.pow(solarFactor, 1.3));
-        const sP = Math.round(1650 * Math.pow(solarFactor, 1.3));
-        
-        cumulativeW += (wP * 0.25) / 1000;
-        cumulativeS += (sP * 0.25) / 1000;
-
-        const padH = String(h).padStart(2, '0');
-        const padM = String(m).padStart(2, '0');
-
-        const simDate = new Date();
-        simDate.setHours(h - 5, m - 30, 0, 0); // Convert IST back approx to UTC for timestamp
-
-        this.readings.push({
-          timestamp: simDate.toISOString(),
-          istDate: todayStr,
-          istTime: `${padH}:${padM}`,
-          waareePower: wP,
-          waareeYield: parseFloat(cumulativeW.toFixed(2)),
-          solaxPower: sP,
-          solaxYield: parseFloat(cumulativeS.toFixed(2)),
-          totalPower: wP + sP,
-          totalYield: parseFloat((cumulativeW + cumulativeS).toFixed(2))
-        });
-      }
-    }
-
-    // Add today to dailySummaries
-    const todayReadings = this.readings.filter(r => r.istDate === todayStr);
-    if (todayReadings.length > 0) {
-      const lastR = todayReadings[todayReadings.length - 1];
-      const maxWPeak = Math.max(...todayReadings.map(r => r.waareePower));
-      const maxSPeak = Math.max(...todayReadings.map(r => r.solaxPower));
-      const maxTPeak = Math.max(...todayReadings.map(r => r.totalPower));
-
-      this.dailySummaries[todayStr] = {
-        date: todayStr,
-        waaree: { peakPower: maxWPeak, finalYield: lastR.waareeYield },
-        solax: { peakPower: maxSPeak, finalYield: lastR.solaxYield },
-        total: { peakPower: maxTPeak, finalYield: lastR.totalYield },
-        readingsCount: todayReadings.length,
-        firstReadingAt: todayReadings[0].timestamp,
-        lastReadingAt: lastR.timestamp
-      };
+    if (todayReading) {
+      this.recordReading(todayReading);
     }
 
     this.saveToDisk();
-    console.log(`✅ [Database] Seeded 180 days history + today's readings up to ${currentHour}:${String(currentMin).padStart(2, '0')} IST.`);
+    console.log(`✅ [Database] Reset complete. Database now contains ONLY real data starting from today (${todayStr}). Total days: ${Object.keys(this.dailySummaries).length}`);
   }
 }
 

@@ -398,6 +398,27 @@ app.post('/api/calibrate', (req, res) => {
   }
 });
 
+// Reset database to keep only real data from today onwards
+app.post('/api/reset', async (req, res) => {
+  try {
+    const solax = await fetchSolaxData();
+    const waaree = getCachedData();
+    db.resetToRealDataOnly();
+    if (waaree || solax) {
+      await recordSnapshot(solax);
+    }
+    res.json({
+      success: true,
+      message: 'Database reset: now storing only real live data starting from today.',
+      daysCount: Object.keys(db.dailySummaries).length,
+      readingsCount: db.readings.length,
+      today: db.dailySummaries[db.formatISTDate(new Date())]
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`📊 Local access: http://localhost:${PORT}`);
