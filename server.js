@@ -369,6 +369,35 @@ app.post('/api/sync', async (req, res) => {
   }
 });
 
+// Update or correct a specific day's records
+app.post('/api/day', (req, res) => {
+  try {
+    const { date, waareeYield, solaxYield, totalYield, waareePeak, solaxPeak, totalPeak } = req.body;
+    if (!date) {
+      return res.status(400).json({ success: false, error: 'Date is required (YYYY-MM-DD)' });
+    }
+    const updated = db.setDaySummary(date, { waareeYield, solaxYield, totalYield, waareePeak, solaxPeak, totalPeak });
+    res.json({ success: true, message: `Updated summary for ${date}`, data: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Calibrate historical baseline to match real plant capacity (e.g. 35 units on reference date)
+app.post('/api/calibrate', (req, res) => {
+  try {
+    const { referenceDate = '2026-09-10', targetYield = 35.0 } = req.body || {};
+    db.calibrateHistory(referenceDate, Number(targetYield));
+    res.json({
+      success: true,
+      message: `Database calibrated: ${referenceDate} is set to ${targetYield} units and history scaled appropriately.`,
+      referenceDay: db.dailySummaries[referenceDate]
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`📊 Local access: http://localhost:${PORT}`);

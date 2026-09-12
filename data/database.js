@@ -410,11 +410,90 @@ class SolarDatabase {
     return [headers.join(','), ...rows].join('\n');
   }
 
+  // Update or set a specific day's summary manually
+  setDaySummary(dateStr, { waareeYield, solaxYield, totalYield, waareePeak, solaxPeak, totalPeak }) {
+    if (!this.dailySummaries[dateStr]) {
+      this.dailySummaries[dateStr] = {
+        date: dateStr,
+        waaree: { peakPower: 0, finalYield: 0 },
+        solax: { peakPower: 0, finalYield: 0 },
+        total: { peakPower: 0, finalYield: 0 },
+        readingsCount: 1,
+        firstReadingAt: `${dateStr}T01:30:00.000Z`,
+        lastReadingAt: `${dateStr}T13:30:00.000Z`
+      };
+    }
+
+    const day = this.dailySummaries[dateStr];
+    if (waareeYield !== undefined) day.waaree.finalYield = parseFloat(Number(waareeYield).toFixed(1));
+    if (solaxYield !== undefined) day.solax.finalYield = parseFloat(Number(solaxYield).toFixed(1));
+    if (totalYield !== undefined) {
+      day.total.finalYield = parseFloat(Number(totalYield).toFixed(1));
+    } else {
+      day.total.finalYield = parseFloat(((day.waaree.finalYield || 0) + (day.solax.finalYield || 0)).toFixed(1));
+    }
+
+    if (waareePeak !== undefined) day.waaree.peakPower = Math.round(Number(waareePeak));
+    if (solaxPeak !== undefined) day.solax.peakPower = Math.round(Number(solaxPeak));
+    if (totalPeak !== undefined) {
+      day.total.peakPower = Math.round(Number(totalPeak));
+    } else {
+      day.total.peakPower = (day.waaree.peakPower || 0) + (day.solax.peakPower || 0);
+    }
+
+    this.saveToDisk();
+    console.log(`📝 [Database] Updated summary for ${dateStr}: Total ${day.total.finalYield} kWh (Waaree ${day.waaree.finalYield}, Solax ${day.solax.finalYield})`);
+    return day;
+  }
+
+  // Calibrate historical baseline to match real plant capacity
+  // e.g. calibrate to 35 units on reference date (2026-09-10)
+  calibrateHistory(referenceDate = '2026-09-10', targetTotalYield = 35.0) {
+    const todayStr = this.formatISTDate(new Date());
+    const refDay = this.dailySummaries[referenceDate];
+    const currentRefYield = refDay?.total?.finalYield || 18.1;
+    const factor = targetTotalYield / currentRefYield;
+
+    console.log(`⚖️ [Database] Calibrating history using reference ${referenceDate} (${currentRefYield} -> ${targetTotalYield} kWh, factor: ${factor.toFixed(4)})...`);
+
+    for (const [dateStr, day] of Object.entries(this.dailySummaries)) {
+      // Don't modify today's actively recording real data
+      if (dateStr === todayStr) continue;
+
+      const newWYield = parseFloat((day.waaree.finalYield * factor).toFixed(1));
+      const newSYield = parseFloat((day.solax.finalYield * factor).toFixed(1));
+      const newTYield = parseFloat((newWYield + newSYield).toFixed(1));
+
+      const newWPeak = Math.round(day.waaree.peakPower * Math.min(1.85, factor));
+      const newSPeak = Math.round(day.solax.peakPower * Math.min(1.85, factor));
+
+      day.waaree.finalYield = newWYield;
+      day.solax.finalYield = newSYield;
+      day.total.finalYield = newTYield;
+
+      day.waaree.peakPower = newWPeak;
+      day.solax.peakPower = newSPeak;
+      day.total.peakPower = newWPeak + newSPeak;
+    }
+
+    // Set reference date exactly to target if specified
+    if (this.dailySummaries[referenceDate]) {
+      const wShare = parseFloat((targetTotalYield * 0.55).toFixed(1));
+      const sShare = parseFloat((targetTotalYield - wShare).toFixed(1));
+      this.dailySummaries[referenceDate].waaree.finalYield = wShare;
+      this.dailySummaries[referenceDate].solax.finalYield = sShare;
+      this.dailySummaries[referenceDate].total.finalYield = targetTotalYield;
+    }
+
+    this.saveToDisk();
+    console.log(`✅ [Database] Calibration complete. 10 September is now ${this.dailySummaries[referenceDate]?.total?.finalYield} units.`);
+  }
+
   // Intelligent baseline historical seed
   // Populates realistic solar production data for the preceding 180 days
-  // matching typical solar plant curves (~12-25 kWh/day depending on weather/season)
+  // matching the real system's ~35 kWh/day generation capacity on sunny days
   seedInitialHistory() {
-    console.log('🌱 [Database] Seeding 180 days of realistic baseline solar history...');
+    console.log('🌱 [Database] Seeding 180 days of realistic baseline solar history (~35 kWh/day peak capacity)...');
     const now = new Date();
 
     for (let i = 180; i >= 1; i--) {
@@ -425,19 +504,20 @@ class SolarDatabase {
       const dayOfYear = Math.floor((pastDate - new Date(pastDate.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
       
       // Seasonal curve: higher production in summer/spring (Mar-May), lower in monsoon (July-Aug), moderate in winter
-      const seasonalFactor = 0.85 + 0.3 * Math.sin((dayOfYear - 80) * (2 * Math.PI / 365));
-      // Random weather fluctuation: sunny vs occasional overcast
-      const weatherFactor = 0.75 + (((dayOfYear * 13) % 100) / 100) * 0.45;
+      const seasonalFactor = 0.85 + 0.25 * Math.sin((dayOfYear - 80) * (2 * Math.PI / 365));
+      // Weather fluctuation: sunny vs occasional overcast
+      const weatherFactor = 0.80 + (((dayOfYear * 13) % 100) / 100) * 0.35;
       
-      const baseWaareeYield = 9.5 * seasonalFactor * weatherFactor;
-      const baseSolaxYield = 8.0 * seasonalFactor * weatherFactor;
+      // Calibrated to ~35 units/day combined output
+      const baseWaareeYield = 19.0 * seasonalFactor * weatherFactor;
+      const baseSolaxYield = 16.0 * seasonalFactor * weatherFactor;
 
-      const wYield = parseFloat(Math.max(3.5, baseWaareeYield).toFixed(1));
-      const sYield = parseFloat(Math.max(2.8, baseSolaxYield).toFixed(1));
+      const wYield = parseFloat(Math.max(7.0, baseWaareeYield).toFixed(1));
+      const sYield = parseFloat(Math.max(5.5, baseSolaxYield).toFixed(1));
       const tYield = parseFloat((wYield + sYield).toFixed(1));
 
-      const wPeak = Math.round(1600 + (((dayOfYear * 7) % 600)));
-      const sPeak = Math.round(1400 + (((dayOfYear * 11) % 550)));
+      const wPeak = Math.round(3600 + (((dayOfYear * 13) % 650)));
+      const sPeak = Math.round(3100 + (((dayOfYear * 17) % 600)));
       const tPeak = wPeak + sPeak;
 
       this.dailySummaries[dateStr] = {
@@ -449,6 +529,16 @@ class SolarDatabase {
         firstReadingAt: `${dateStr}T01:30:00.000Z`, // 7:00 AM IST
         lastReadingAt: `${dateStr}T13:30:00.000Z`   // 7:00 PM IST
       };
+    }
+
+    // Explicitly set reference date 2026-09-10 to ~35 units
+    if (this.dailySummaries['2026-09-10']) {
+      this.dailySummaries['2026-09-10'].waaree.finalYield = 19.2;
+      this.dailySummaries['2026-09-10'].solax.finalYield = 15.8;
+      this.dailySummaries['2026-09-10'].total.finalYield = 35.0;
+      this.dailySummaries['2026-09-10'].waaree.peakPower = 3920;
+      this.dailySummaries['2026-09-10'].solax.peakPower = 3280;
+      this.dailySummaries['2026-09-10'].total.peakPower = 7200;
     }
 
     // Seed realistic intraday readings for today up to current hour
