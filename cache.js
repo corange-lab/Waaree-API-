@@ -42,16 +42,16 @@ function saveCache() {
   }
 }
 
-// Check if current time is within 7 AM - 7 PM IST
+// Check if current time is within 6 AM - 7 PM IST
 function isWithinOperatingHours() {
   const now = new Date();
-  const utcTime = now.getTime();
-  const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
-  const istTime = new Date(utcTime + istOffset);
-  const hours = istTime.getUTCHours();
-  
-  // 7 AM = 1:30 UTC, 7 PM = 13:30 UTC (approx)
-  return hours >= 1 && hours < 13;
+  const istHourStr = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    hour12: false
+  }).format(now);
+  const istHour = parseInt(istHourStr, 10);
+  return istHour >= 6 && istHour <= 19;
 }
 
 // Fetch fresh data

@@ -1,5 +1,4 @@
 # Environment variables
-.env
 
 # Session data
 waaree-state.json
@@ -24,7 +23,6 @@ node_modules/
 .DS_Store
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo

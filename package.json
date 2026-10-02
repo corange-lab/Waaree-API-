@@ -5,11 +5,16 @@
   "main": "server.js",
   "scripts": {
     "login": "node scripts/saveStorage.js",
-    "start": "node server.js",
+    "start": "node init && node server.js",
     "test": "node test-login.js",
     "postinstall": "npx --yes playwright install chromium"
   },
-  "keywords": ["waaree", "solar", "earnings", "api"],
+  "keywords": [
+    "waaree",
+    "solar",
+    "earnings",
+    "api"
+  ],
   "author": "",
   "license": "ISC",
   "engines": {
